@@ -123,12 +123,43 @@ export function GanttChart() {
     
     // Now process bookings and add to timeline
     bookings.forEach((booking) => {
-      const startDate = booking.pickupDate instanceof Date 
-        ? new Date(booking.pickupDate) 
-        : new Date(booking.pickupDate)
-      const endDate = booking.returnDate instanceof Date 
-        ? new Date(booking.returnDate) 
-        : new Date(booking.returnDate)
+      // Parse dates in local timezone - extract date components directly from string if needed
+      let startDate: Date
+      let endDate: Date
+      
+      if (booking.pickupDate instanceof Date) {
+        startDate = new Date(booking.pickupDate.getFullYear(), booking.pickupDate.getMonth(), booking.pickupDate.getDate())
+      } else {
+        // Parse date string directly (format: YYYY-MM-DD or ISO string)
+        const pickupStr = String(booking.pickupDate)
+        if (pickupStr.includes('T')) {
+          // ISO string - extract date part
+          const [datePart] = pickupStr.split('T')
+          const [year, month, day] = datePart.split('-').map(Number)
+          startDate = new Date(year, month - 1, day)
+        } else {
+          // Already in YYYY-MM-DD format
+          const [year, month, day] = pickupStr.split('-').map(Number)
+          startDate = new Date(year, month - 1, day)
+        }
+      }
+      
+      if (booking.returnDate instanceof Date) {
+        endDate = new Date(booking.returnDate.getFullYear(), booking.returnDate.getMonth(), booking.returnDate.getDate())
+      } else {
+        // Parse date string directly
+        const returnStr = String(booking.returnDate)
+        if (returnStr.includes('T')) {
+          // ISO string - extract date part
+          const [datePart] = returnStr.split('T')
+          const [year, month, day] = datePart.split('-').map(Number)
+          endDate = new Date(year, month - 1, day)
+        } else {
+          // Already in YYYY-MM-DD format
+          const [year, month, day] = returnStr.split('-').map(Number)
+          endDate = new Date(year, month - 1, day)
+        }
+      }
       
       // Process bookingItems with equipment
       if (booking.bookingItems && booking.bookingItems.length > 0) {
@@ -214,8 +245,17 @@ export function GanttChart() {
   // Calculate date range for display
   const days = useMemo(() => {
     const daysArray: Date[] = []
-    const start = new Date(dateRange.start)
-    const end = new Date(dateRange.end)
+    // Extract date components to avoid timezone issues
+    const startYear = dateRange.start.getFullYear()
+    const startMonth = dateRange.start.getMonth()
+    const startDay = dateRange.start.getDate()
+    
+    const endYear = dateRange.end.getFullYear()
+    const endMonth = dateRange.end.getMonth()
+    const endDay = dateRange.end.getDate()
+    
+    const start = new Date(startYear, startMonth, startDay)
+    const end = new Date(endYear, endMonth, endDay)
     
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       daysArray.push(new Date(d))
@@ -238,19 +278,36 @@ export function GanttChart() {
   }
 
   const getBookingPosition = (startDate: Date, endDate: Date) => {
-    const start = new Date(dateRange.start)
-    start.setHours(0, 0, 0, 0)
-    const end = new Date(dateRange.end)
-    end.setHours(23, 59, 59, 999)
-    const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    // Extract date components to avoid timezone issues
+    const rangeStartYear = dateRange.start.getFullYear()
+    const rangeStartMonth = dateRange.start.getMonth()
+    const rangeStartDay = dateRange.start.getDate()
     
-    const bookingStart = new Date(startDate)
-    bookingStart.setHours(0, 0, 0, 0)
-    const bookingEnd = new Date(endDate)
-    bookingEnd.setHours(23, 59, 59, 999)
+    const rangeEndYear = dateRange.end.getFullYear()
+    const rangeEndMonth = dateRange.end.getMonth()
+    const rangeEndDay = dateRange.end.getDate()
     
-    const daysFromStart = Math.ceil((bookingStart.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-    const bookingDuration = Math.ceil((bookingEnd.getTime() - bookingStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const bookingStartYear = startDate.getFullYear()
+    const bookingStartMonth = startDate.getMonth()
+    const bookingStartDay = startDate.getDate()
+    
+    const bookingEndYear = endDate.getFullYear()
+    const bookingEndMonth = endDate.getMonth()
+    const bookingEndDay = endDate.getDate()
+    
+    // Calculate total days in range (inclusive)
+    const rangeStart = new Date(rangeStartYear, rangeStartMonth, rangeStartDay)
+    const rangeEnd = new Date(rangeEndYear, rangeEndMonth, rangeEndDay)
+    const totalDays = Math.ceil((rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    
+    // Calculate booking position
+    const bookingStart = new Date(bookingStartYear, bookingStartMonth, bookingStartDay)
+    const bookingEnd = new Date(bookingEndYear, bookingEndMonth, bookingEndDay)
+    
+    // Days from range start
+    const daysFromStart = Math.floor((bookingStart.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24))
+    // Booking duration (inclusive)
+    const bookingDuration = Math.floor((bookingEnd.getTime() - bookingStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
     
     const left = Math.max(0, daysFromStart)
     const width = Math.max(1, bookingDuration)
@@ -280,8 +337,17 @@ export function GanttChart() {
             <label className="text-sm font-medium text-white">Start Date:</label>
             <input
               type="date"
-              value={dateRange.start.toISOString().split('T')[0]}
-              onChange={(e) => setDateRange({ ...dateRange, start: new Date(e.target.value) })}
+              value={(() => {
+                const d = new Date(dateRange.start)
+                const year = d.getFullYear()
+                const month = String(d.getMonth() + 1).padStart(2, '0')
+                const day = String(d.getDate()).padStart(2, '0')
+                return `${year}-${month}-${day}`
+              })()}
+              onChange={(e) => {
+                const [year, month, day] = e.target.value.split('-').map(Number)
+                setDateRange({ ...dateRange, start: new Date(year, month - 1, day, 12, 0, 0) })
+              }}
               className="px-3 py-2 bg-deep-slate border border-gray-700 rounded-lg text-white text-sm"
             />
           </div>
@@ -289,8 +355,17 @@ export function GanttChart() {
             <label className="text-sm font-medium text-white">End Date:</label>
             <input
               type="date"
-              value={dateRange.end.toISOString().split('T')[0]}
-              onChange={(e) => setDateRange({ ...dateRange, end: new Date(e.target.value) })}
+              value={(() => {
+                const d = new Date(dateRange.end)
+                const year = d.getFullYear()
+                const month = String(d.getMonth() + 1).padStart(2, '0')
+                const day = String(d.getDate()).padStart(2, '0')
+                return `${year}-${month}-${day}`
+              })()}
+              onChange={(e) => {
+                const [year, month, day] = e.target.value.split('-').map(Number)
+                setDateRange({ ...dateRange, end: new Date(year, month - 1, day, 12, 0, 0) })
+              }}
               className="px-3 py-2 bg-deep-slate border border-gray-700 rounded-lg text-white text-sm"
             />
           </div>
