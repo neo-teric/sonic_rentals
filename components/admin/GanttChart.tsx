@@ -36,7 +36,11 @@ interface EquipmentTimeline {
 export function GanttChart() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [dateRange, setDateRange] = useState({ start: new Date(), end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) })
+  // Initialize date range to show past 7 days and next 30 days to catch recent bookings
+  const [dateRange, setDateRange] = useState({ 
+    start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 
+    end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) 
+  })
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<'equipment' | 'timeline'>('timeline')
 
@@ -48,7 +52,25 @@ export function GanttChart() {
       })
       if (response.ok) {
         const data = await response.json()
+        console.log('GanttChart: Fetched', data.length, 'bookings')
+        if (data.length > 0) {
+          console.log('GanttChart: First booking:', {
+            id: data[0].id,
+            status: data[0].status,
+            pickupDate: data[0].pickupDate,
+            returnDate: data[0].returnDate,
+            bookingItemsCount: data[0].bookingItems?.length || 0,
+            bookingItems: data[0].bookingItems?.map((item: any) => ({
+              hasEquipment: !!item.equipment,
+              equipmentId: item.equipment?.id,
+              equipmentName: item.equipment?.name,
+              hasAddOn: !!item.addOn,
+            })) || []
+          })
+        }
         setBookings(data)
+      } else {
+        console.error('GanttChart: Failed to fetch bookings:', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Error fetching bookings:', error)
@@ -67,34 +89,120 @@ export function GanttChart() {
   const equipmentTimeline = useMemo(() => {
     const timelineMap = new Map<string, EquipmentTimeline>()
 
+    console.log('GanttChart: Building timeline from', bookings.length, 'bookings')
+    
+    // First, fetch all equipment to map IDs to names
+    const equipmentMap = new Map<string, string>()
+    
     bookings.forEach((booking) => {
-      booking.bookingItems.forEach((item) => {
-        if (item.equipment) {
-          const equipmentId = item.equipment.id
-          const equipmentName = item.equipment.name
+      // Process bookingItems with equipment
+      if (booking.bookingItems && booking.bookingItems.length > 0) {
+        booking.bookingItems.forEach((item) => {
+          if (item.equipment && item.equipment.id) {
+            equipmentMap.set(item.equipment.id, item.equipment.name)
+          }
+        })
+      }
+      
+      // Process package equipment
+      if (booking.package && booking.package.keyEquipment) {
+        try {
+          const packageEquipmentIds = JSON.parse(booking.package.keyEquipment || '[]')
+          // We'll need to fetch equipment names later, but for now store the IDs
+          packageEquipmentIds.forEach((equipmentId: string) => {
+            if (equipmentId && !equipmentMap.has(equipmentId)) {
+              // We'll fetch the name when we process the booking
+              equipmentMap.set(equipmentId, '') // Placeholder
+            }
+          })
+        } catch (e) {
+          console.error('Error parsing package keyEquipment:', e)
+        }
+      }
+    })
+    
+    // Now process bookings and add to timeline
+    bookings.forEach((booking) => {
+      const startDate = booking.pickupDate instanceof Date 
+        ? new Date(booking.pickupDate) 
+        : new Date(booking.pickupDate)
+      const endDate = booking.returnDate instanceof Date 
+        ? new Date(booking.returnDate) 
+        : new Date(booking.returnDate)
+      
+      // Process bookingItems with equipment
+      if (booking.bookingItems && booking.bookingItems.length > 0) {
+        booking.bookingItems.forEach((item) => {
+          if (item.equipment && item.equipment.id) {
+            const equipmentId = item.equipment.id
+            const equipmentName = item.equipment.name
 
-          if (!timelineMap.has(equipmentId)) {
-            timelineMap.set(equipmentId, {
-              equipmentId,
-              equipmentName,
-              bookings: [],
+            if (!timelineMap.has(equipmentId)) {
+              timelineMap.set(equipmentId, {
+                equipmentId,
+                equipmentName,
+                bookings: [],
+              })
+            }
+
+            const timeline = timelineMap.get(equipmentId)!
+            timeline.bookings.push({
+              bookingId: booking.id,
+              startDate,
+              endDate,
+              status: booking.status,
+              quantity: item.quantity || 1,
+              packageName: booking.package?.name,
             })
           }
-
-          const timeline = timelineMap.get(equipmentId)!
-          timeline.bookings.push({
-            bookingId: booking.id,
-            startDate: new Date(booking.pickupDate),
-            endDate: new Date(booking.returnDate),
-            status: booking.status,
-            quantity: item.quantity,
-            packageName: booking.package?.name,
+        })
+      }
+      
+      // Process package equipment (if bookingItems don't have equipment)
+      if (booking.package && booking.package.keyEquipment) {
+        try {
+          const packageEquipmentIds = JSON.parse(booking.package.keyEquipment || '[]')
+          packageEquipmentIds.forEach((equipmentId: string) => {
+            if (equipmentId) {
+              // Check if this equipment is already in timeline from bookingItems
+              if (!timelineMap.has(equipmentId)) {
+                // We need to get the equipment name - for now use ID
+                // In a real scenario, we'd fetch this, but for Gantt we can work with ID
+                timelineMap.set(equipmentId, {
+                  equipmentId,
+                  equipmentName: `Equipment ${equipmentId.slice(0, 8)}`, // Fallback name
+                  bookings: [],
+                })
+              }
+              
+              const timeline = timelineMap.get(equipmentId)!
+              // Only add if not already added from bookingItems
+              const alreadyAdded = timeline.bookings.some(b => b.bookingId === booking.id)
+              if (!alreadyAdded) {
+                timeline.bookings.push({
+                  bookingId: booking.id,
+                  startDate,
+                  endDate,
+                  status: booking.status,
+                  quantity: 1, // Package bookings typically book 1 of each equipment
+                  packageName: booking.package?.name,
+                })
+              }
+            }
           })
+        } catch (e) {
+          console.error('Error parsing package keyEquipment:', e)
         }
-      })
+      }
     })
 
-    return Array.from(timelineMap.values())
+    const result = Array.from(timelineMap.values())
+    console.log('GanttChart: Built timeline with', result.length, 'equipment entries')
+    result.forEach(item => {
+      console.log(`GanttChart: ${item.equipmentName} (${item.equipmentId}) has ${item.bookings.length} bookings`)
+    })
+    
+    return result
   }, [bookings])
 
   // Filter equipment based on selection
@@ -131,14 +239,21 @@ export function GanttChart() {
 
   const getBookingPosition = (startDate: Date, endDate: Date) => {
     const start = new Date(dateRange.start)
+    start.setHours(0, 0, 0, 0)
     const end = new Date(dateRange.end)
+    end.setHours(23, 59, 59, 999)
     const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
     
     const bookingStart = new Date(startDate)
+    bookingStart.setHours(0, 0, 0, 0)
     const bookingEnd = new Date(endDate)
+    bookingEnd.setHours(23, 59, 59, 999)
     
-    const left = Math.max(0, Math.ceil((bookingStart.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)))
-    const width = Math.ceil((bookingEnd.getTime() - bookingStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const daysFromStart = Math.ceil((bookingStart.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+    const bookingDuration = Math.ceil((bookingEnd.getTime() - bookingStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    
+    const left = Math.max(0, daysFromStart)
+    const width = Math.max(1, bookingDuration)
     
     return {
       left: `${(left / totalDays) * 100}%`,
@@ -286,7 +401,16 @@ export function GanttChart() {
                   <div className="text-center py-8 text-gray-400">
                     {selectedEquipment.length > 0
                       ? 'No bookings found for selected equipment'
-                      : 'No equipment bookings found'}
+                      : bookings.length === 0
+                      ? 'No bookings found. Make sure bookings have status Confirmed, Active, or Completed and include equipment items.'
+                      : 'No equipment bookings found. Bookings may not have equipment items, or they may be outside the selected date range.'}
+                    {bookings.length > 0 && (
+                      <div className="mt-2 text-xs">
+                        <div>Total bookings: {bookings.length}</div>
+                        <div>Bookings with items: {bookings.filter(b => b.bookingItems && b.bookingItems.length > 0).length}</div>
+                        <div>Items with equipment: {bookings.reduce((sum, b) => sum + (b.bookingItems?.filter((item: any) => item.equipment).length || 0), 0)}</div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   filteredTimeline.map((item) => (
@@ -298,26 +422,38 @@ export function GanttChart() {
                         </div>
                       </div>
                       <div className="flex-1 relative min-h-[60px]">
-                        {item.bookings.map((booking) => {
-                          const position = getBookingPosition(booking.startDate, booking.endDate)
-                          return (
-                            <div
-                              key={booking.bookingId}
-                              className={`absolute top-1 bottom-1 ${getStatusColor(booking.status)} rounded px-2 py-1 text-white text-xs cursor-pointer hover:opacity-80 transition-opacity`}
-                              style={{
-                                left: position.left,
-                                width: position.width,
-                                minWidth: '40px',
-                              }}
-                              title={`Booking ${booking.bookingId.slice(0, 8)}\nStatus: ${booking.status}\nQty: ${booking.quantity}\n${booking.packageName ? `Package: ${booking.packageName}` : ''}`}
-                            >
-                              <div className="truncate font-semibold">
-                                {booking.packageName || `#${booking.bookingId.slice(0, 6)}`}
+                        {item.bookings
+                          .filter((booking) => {
+                            // Filter bookings that overlap with the visible date range
+                            const bookingStart = new Date(booking.startDate)
+                            const bookingEnd = new Date(booking.endDate)
+                            const rangeStart = new Date(dateRange.start)
+                            const rangeEnd = new Date(dateRange.end)
+                            
+                            // Check if booking overlaps with visible range
+                            return bookingStart <= rangeEnd && bookingEnd >= rangeStart
+                          })
+                          .map((booking) => {
+                            const position = getBookingPosition(booking.startDate, booking.endDate)
+                            return (
+                              <div
+                                key={booking.bookingId}
+                                className={`absolute top-1 bottom-1 ${getStatusColor(booking.status)} rounded px-2 py-1 text-white text-xs cursor-pointer hover:opacity-80 transition-opacity z-10`}
+                                style={{
+                                  left: position.left,
+                                  width: position.width,
+                                  minWidth: '40px',
+                                  maxWidth: '100%',
+                                }}
+                                title={`Booking ${booking.bookingId.slice(0, 8)}\nStatus: ${booking.status}\nQty: ${booking.quantity}\n${booking.packageName ? `Package: ${booking.packageName}` : ''}\nDates: ${new Date(booking.startDate).toLocaleDateString()} - ${new Date(booking.endDate).toLocaleDateString()}`}
+                              >
+                                <div className="truncate font-semibold">
+                                  {booking.packageName || `#${booking.bookingId.slice(0, 6)}`}
+                                </div>
+                                <div className="text-[10px] opacity-90">Qty: {booking.quantity}</div>
                               </div>
-                              <div className="text-[10px] opacity-90">Qty: {booking.quantity}</div>
-                            </div>
-                          )
-                        })}
+                            )
+                          })}
                       </div>
                     </div>
                   ))

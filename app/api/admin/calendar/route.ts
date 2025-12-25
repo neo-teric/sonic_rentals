@@ -28,6 +28,34 @@ export async function GET() {
       },
       orderBy: { pickupDate: 'asc' },
     })
+    
+    // For package bookings, ensure we have equipment info
+    // Fetch equipment details for packages that have keyEquipment
+    for (const booking of bookings) {
+      if (booking.package && booking.package.keyEquipment && (!booking.bookingItems || booking.bookingItems.length === 0 || !booking.bookingItems.some(item => item.equipment))) {
+        try {
+          const packageEquipmentIds = JSON.parse(booking.package.keyEquipment || '[]')
+          if (Array.isArray(packageEquipmentIds) && packageEquipmentIds.length > 0) {
+            const equipment = await db.equipment.findMany({
+              where: { id: { in: packageEquipmentIds } },
+            })
+            // Add equipment to bookingItems for Gantt chart processing
+            if (!booking.bookingItems) {
+              (booking as any).bookingItems = []
+            }
+            equipment.forEach((eq) => {
+              (booking as any).bookingItems.push({
+                id: `package-${booking.id}-${eq.id}`,
+                equipment: eq,
+                quantity: 1,
+              })
+            })
+          }
+        } catch (e) {
+          console.error('Error processing package equipment:', e)
+        }
+      }
+    }
 
     // Log for debugging (remove in production if needed)
     console.log(`Calendar API: Found ${bookings.length} confirmed/active/completed bookings`)
