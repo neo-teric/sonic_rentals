@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -19,7 +19,7 @@ interface Equipment {
   status: string
 }
 
-export default function BookingPage() {
+function BookingPageContent() {
   const searchParams = useSearchParams()
   const packageId = searchParams.get('package')
   const equipmentId = searchParams.get('equipment')
@@ -493,6 +493,23 @@ export default function BookingPage() {
         </Card>
       </div>
     </main>
+  )
+}
+
+export default function BookingPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen py-12 px-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold text-white mb-2">Booking</h1>
+            <p className="text-gray-400">Loading...</p>
+          </div>
+        </div>
+      </main>
+    }>
+      <BookingPageContent />
+    </Suspense>
   )
 }
 

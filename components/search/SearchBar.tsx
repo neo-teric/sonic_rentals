@@ -153,7 +153,7 @@ export function SearchBar() {
                           name={pkg.name}
                           idealFor={pkg.idealFor}
                           crowdSize={pkg.crowdSize}
-                          setupTime={pkg.setupTime}
+                          setupTime={Number(pkg.setupTime)}
                           basePrice={pkg.basePrice}
                         />
                       ))}
