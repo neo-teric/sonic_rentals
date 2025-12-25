@@ -131,12 +131,27 @@ export function CalendarView() {
           <Card key={date}>
             <CardHeader>
               <CardTitle className="text-xl">
-                {new Date(date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
+                {(() => {
+                  // Parse date string directly (format: YYYY-MM-DD)
+                  const [year, month, day] = date.split('-').map(Number)
+                  const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+                  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+                  
+                  // Calculate weekday using Zeller's congruence to avoid timezone issues
+                  let y = year
+                  let m = month
+                  if (m < 3) {
+                    m += 12
+                    y -= 1
+                  }
+                  const k = y % 100
+                  const j = Math.floor(y / 100)
+                  const weekday = (day + Math.floor(13 * (m + 1) / 5) + k + Math.floor(k / 4) + Math.floor(j / 4) - 2 * j) % 7
+                  // Adjust for modulo result (0 = Saturday, 1 = Sunday, ..., 6 = Friday)
+                  const weekdayIndex = weekday === 0 ? 6 : weekday - 1
+                  
+                  return `${weekdays[weekdayIndex]}, ${months[month - 1]} ${day}, ${year}`
+                })()}
               </CardTitle>
             </CardHeader>
             <CardContent>
