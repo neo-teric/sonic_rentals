@@ -1,0 +1,195 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  name        String
+  phone       String?
+  passwordHash String?
+  role        String   @default("customer") // customer/admin
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Package {
+  id           String    @id @default(uuid())
+  name         String
+  idealFor     String
+  crowdSize    String
+  keyEquipment String   // JSON string: Array of equipment IDs
+  setupTime    Int       // Minutes
+  basePrice     Float
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  bookings      Booking[]
+
+  @@map("packages")
+}
+
+model Equipment {
+  id             String          @id @default(uuid())
+  name           String
+  category       String
+  specs          String          // JSON string: {watts, audienceCapacity, connectionTypes, etc.}
+  dayRate        Float
+  serialNumber   String?
+  status         String          // Active/InRepair/Retired
+  imageUrl       String?
+  quantity       Int             @default(1) // Total available units
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  bookingItems   BookingItem[]
+  maintenanceLogs MaintenanceLog[]
+
+  @@index([status])
+  @@index([category])
+  @@map("equipment")
+}
+
+model AddOn {
+  id          String       @id @default(uuid())
+  name        String
+  category    String       // Atmosphere/Technical/Premium
+  price       Float
+  description String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  bookingItems BookingItem[]
+
+  @@index([category])
+  @@map("addons")
+}
+
+model Booking {
+  id                    String    @id @default(uuid())
+  userId                String
+  packageId             String?
+  pickupDate            DateTime
+  returnDate            DateTime
+  totalPrice            Float
+  deposit               Float
+  status                String    // Pending/Confirmed/Active/Completed/Cancelled
+  deliveryOption        String    // WarehousePickup/ProfessionalDelivery
+  signature             String?   // Base64 encoded signature
+  idUploadUrl           String?   // Path to uploaded ID file
+  stripePaymentIntentId String?
+  stripeDepositIntentId String?
+  inspectionCompleted   Boolean   @default(false)
+  depositRefunded        Boolean   @default(false)
+  lateFee                Float     @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  package               Package?  @relation(fields: [packageId], references: [id])
+  bookingItems          BookingItem[]
+  inspectionChecklist   InspectionChecklist?
+
+  @@index([userId])
+  @@index([status])
+  @@index([pickupDate, returnDate])
+  @@map("bookings")
+}
+
+model BookingItem {
+  id         String   @id @default(uuid())
+  bookingId  String
+  equipmentId String?
+  addOnId    String?
+  quantity   Int      @default(1)
+  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  equipment  Equipment? @relation(fields: [equipmentId], references: [id])
+  addOn      AddOn?   @relation(fields: [addOnId], references: [id])
+
+  @@index([bookingId])
+  @@index([equipmentId])
+  @@index([addOnId])
+  @@map("booking_items")
+}
+
+model MaintenanceLog {
+  id         String    @id @default(uuid())
+  equipmentId String
+  status     String    // Active/InRepair/Retired
+  notes      String
+  date       DateTime  @default(now())
+  repairedBy String?
+  equipment  Equipment @relation(fields: [equipmentId], references: [id])
+
+  @@index([equipmentId])
+  @@index([date])
+  @@map("maintenance_logs")
+}
+
+model InspectionChecklist {
+  id              String   @id @default(uuid())
+  bookingId       String   @unique
+  physicalCondition String // Excellent/Good/Fair/Damaged
+  audioTest       Boolean  // Audio sweep passed
+  accessoryCount  Int      // Number of accessories verified
+  notes           String?
+  completedBy     String?  // Admin user ID
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("inspection_checklists")
+}
+
+model PastBooking {
+  id                    String    @id @default(uuid())
+  originalBookingId     String    // Reference to original booking ID
+  userId                String
+  packageId             String?
+  packageName           String?   // Store package name for historical reference
+  pickupDate            DateTime
+  returnDate            DateTime
+  totalPrice            Float
+  deposit               Float
+  originalStatus        String    // Status before deletion/rejection
+  action                String    // deleted/rejected
+  actionBy               String?   // Admin user ID who performed the action
+  actionReason          String?   // Optional reason for rejection/deletion
+  deliveryOption        String
+  signature             String?
+  idUploadUrl           String?
+  stripePaymentIntentId String?
+  stripeDepositIntentId String?
+  inspectionCompleted   Boolean   @default(false)
+  depositRefunded        Boolean   @default(false)
+  lateFee                Float     @default(0)
+  createdAt             DateTime  // Original booking creation date
+  updatedAt             DateTime  // Original booking update date
+  archivedAt            DateTime  @default(now()) // When it was moved to past bookings
+  pastBookingItems      PastBookingItem[]
+
+  @@index([userId])
+  @@index([action])
+  @@index([archivedAt])
+  @@map("past_bookings")
+}
+
+model PastBookingItem {
+  id              String      @id @default(uuid())
+  pastBookingId   String
+  equipmentId     String?
+  equipmentName   String?     // Store equipment name for historical reference
+  addOnId         String?
+  addOnName       String?     // Store addon name for historical reference
+  quantity       Int         @default(1)
+  pastBooking    PastBooking @relation(fields: [pastBookingId], references: [id], onDelete: Cascade)
+
+  @@index([pastBookingId])
+  @@map("past_booking_items")
+}
+
