@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { formatCurrency } from '@/lib/utils'
 import { BookingCalendar } from '@/components/booking/BookingCalendar'
+import { UpsellModal } from '@/components/booking/UpsellModal'
 import { ProductCard } from '@/components/ui/ProductCard'
 import Link from 'next/link'
 
@@ -26,7 +27,10 @@ function BookingPageContent() {
   const [step, setStep] = useState(1)
   const [selectedPackage, setSelectedPackage] = useState<any>(null)
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment[]>([])
+  const [selectedAddOns, setSelectedAddOns] = useState<string[]>([])
   const [availableEquipment, setAvailableEquipment] = useState<Equipment[]>([])
+  const [availableAddOns, setAvailableAddOns] = useState<any[]>([])
+  const [showUpsellModal, setShowUpsellModal] = useState(false)
   const [bookingData, setBookingData] = useState({
     packageId: packageId || '',
     pickupDate: '',
@@ -71,6 +75,14 @@ function BookingPageContent() {
       .catch(err => console.error('Error fetching equipment:', err))
   }, [])
 
+  // Fetch available add-ons
+  useEffect(() => {
+    fetch('/api/addons')
+      .then(res => res.json())
+      .then(data => setAvailableAddOns(data))
+      .catch(err => console.error('Error fetching add-ons:', err))
+  }, [])
+
   const addEquipment = (equipmentId: string) => {
     const equipment = availableEquipment.find(eq => eq.id === equipmentId)
     if (equipment && !selectedEquipment.find(eq => eq.id === equipmentId)) {
@@ -83,17 +95,25 @@ function BookingPageContent() {
   }
 
   const calculateTotalPrice = () => {
+    let basePrice = 0
+    
     if (selectedPackage) {
       const days = bookingData.pickupDate && bookingData.returnDate
         ? Math.ceil((new Date(bookingData.returnDate).getTime() - new Date(bookingData.pickupDate).getTime()) / (1000 * 60 * 60 * 24))
         : 1
-      return selectedPackage.basePrice * days
-    }
-    if (selectedEquipment.length > 0 && bookingData.pickupDate && bookingData.returnDate) {
+      basePrice = selectedPackage.basePrice * days
+    } else if (selectedEquipment.length > 0 && bookingData.pickupDate && bookingData.returnDate) {
       const days = Math.ceil((new Date(bookingData.returnDate).getTime() - new Date(bookingData.pickupDate).getTime()) / (1000 * 60 * 60 * 24))
-      return selectedEquipment.reduce((sum, eq) => sum + (eq.dayRate * days), 0)
+      basePrice = selectedEquipment.reduce((sum, eq) => sum + (eq.dayRate * days), 0)
     }
-    return 0
+    
+    // Add add-ons price (add-ons are one-time fees, not per-day)
+    const addOnsPrice = selectedAddOns.reduce((sum, id) => {
+      const addOn = availableAddOns.find(a => a.id === id)
+      return sum + (addOn?.price || 0)
+    }, 0)
+    
+    return basePrice + addOnsPrice
   }
 
   const steps = [
@@ -309,12 +329,65 @@ function BookingPageContent() {
             )}
 
             {step === 3 && (
-              <div>
-                <p className="text-gray-400 mb-4">Upsell step - Add extras (Coming soon)</p>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Finish Your Rig</h3>
+                  <p className="text-gray-400 mb-4">
+                    Add extras to make your event perfect. Browse our recommended add-ons or skip this step.
+                  </p>
+                </div>
+                
+                {selectedAddOns.length > 0 && (
+                  <div className="p-4 bg-deep-slate rounded-lg border border-neon-blue/20">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-sm font-semibold text-white mb-1">
+                          {selectedAddOns.length} Add-on{selectedAddOns.length !== 1 ? 's' : ''} Selected
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          Total: {formatCurrency(selectedAddOns.reduce((sum, id) => {
+                            const addOn = availableAddOns.find(a => a.id === id)
+                            return sum + (addOn?.price || 0)
+                          }, 0))}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowUpsellModal(true)}
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      {selectedAddOns.map((id) => {
+                        const addOn = availableAddOns.find(a => a.id === id)
+                        if (!addOn) return null
+                        return (
+                          <div key={id} className="flex justify-between text-xs text-gray-300">
+                            <span>{addOn.name}</span>
+                            <span className="text-neon-blue">{formatCurrency(addOn.price)}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-4">
                   <Button onClick={() => setStep(2)} variant="outline">Back</Button>
-                  <Button onClick={() => setStep(4)} variant="primary" className="flex-1">
-                    Continue
+                  <Button 
+                    onClick={() => setShowUpsellModal(true)} 
+                    variant="primary" 
+                    className="flex-1"
+                  >
+                    {selectedAddOns.length > 0 ? 'Browse More Add-ons' : 'Browse Add-ons'}
+                  </Button>
+                  <Button 
+                    onClick={() => setStep(4)} 
+                    variant="ghost"
+                  >
+                    {selectedAddOns.length > 0 ? 'Continue' : 'Skip'}
                   </Button>
                 </div>
               </div>
@@ -418,6 +491,23 @@ function BookingPageContent() {
                         </div>
                       </div>
                     )}
+                    {selectedAddOns.length > 0 && (
+                      <div className="mb-2">
+                        <span className="text-gray-400">Add-ons:</span>
+                        <div className="mt-1 space-y-1">
+                          {selectedAddOns.map((addOnId) => {
+                            const addOn = availableAddOns.find(a => a.id === addOnId)
+                            if (!addOn) return null
+                            return (
+                              <div key={addOnId} className="flex justify-between text-xs">
+                                <span className="text-gray-300">{addOn.name}</span>
+                                <span className="text-white">{formatCurrency(addOn.price)}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-gray-400">Pickup:</span>
                       <span className="text-white">{new Date(bookingData.pickupDate).toLocaleDateString()}</span>
@@ -437,6 +527,12 @@ function BookingPageContent() {
                           {formatCurrency(calculateTotalPrice())}
                         </span>
                       </div>
+                      {selectedAddOns.length > 0 && (
+                        <div className="flex justify-between mt-1 text-xs">
+                          <span className="text-gray-400">Add-ons:</span>
+                          <span className="text-gray-300">(included in total)</span>
+                        </div>
+                      )}
                       <div className="flex justify-between mt-1">
                         <span className="text-gray-400 text-xs">Deposit (50%):</span>
                         <span className="text-gray-300 text-xs">
@@ -462,6 +558,7 @@ function BookingPageContent() {
                           body: JSON.stringify({
                             packageId: bookingData.packageId || null,
                             equipmentIds: selectedEquipment.map(eq => eq.id),
+                            addOnIds: selectedAddOns,
                             pickupDate: bookingData.pickupDate,
                             returnDate: bookingData.returnDate,
                             totalPrice,
@@ -491,6 +588,22 @@ function BookingPageContent() {
             )}
           </CardContent>
         </Card>
+
+        {/* Upsell Modal */}
+        <UpsellModal
+          isOpen={showUpsellModal}
+          onClose={() => setShowUpsellModal(false)}
+          onContinue={(addOnIds) => {
+            setSelectedAddOns(addOnIds)
+            setShowUpsellModal(false)
+            // Optionally auto-advance to next step
+            if (addOnIds.length > 0) {
+              setStep(4)
+            }
+          }}
+          selectedEquipment={selectedEquipment}
+          selectedPackage={selectedPackage}
+        />
       </div>
     </main>
   )
