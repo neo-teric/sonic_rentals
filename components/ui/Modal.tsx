@@ -58,10 +58,10 @@ export function Modal({ isOpen, onClose, title, children, className, size = 'md'
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
       
       {/* Modal Content */}
-      <div className={cn('relative z-10 w-full', sizeClasses[size], className)}>
-        <Card className="border-neon-blue/30 shadow-2xl">
-          <CardHeader className="flex flex-row items-center justify-between border-b border-gray-700">
-            <CardTitle className="text-2xl">{title}</CardTitle>
+      <div className={cn('relative z-10 w-full max-h-[90vh] overflow-hidden flex flex-col', sizeClasses[size], className)}>
+        <Card className="border-neon-blue/30 shadow-2xl flex flex-col max-h-[90vh]">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-gray-700 flex-shrink-0">
+            <CardTitle className="text-xl">{title}</CardTitle>
             <Button
               variant="ghost"
               size="sm"
@@ -71,7 +71,7 @@ export function Modal({ isOpen, onClose, title, children, className, size = 'md'
               ✕
             </Button>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-4 overflow-y-auto flex-1">
             {children}
           </CardContent>
         </Card>

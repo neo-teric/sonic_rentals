@@ -209,10 +209,9 @@ export function BookingActionModal({
     try {
       const date = new Date(dateString)
       return date.toLocaleDateString('en-US', { 
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
       })
     } catch {
       return dateString
@@ -239,71 +238,71 @@ export function BookingActionModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Booking Details"
-      size="lg"
+      size="sm"
     >
       {isLoading ? (
-        <div className="text-center py-8">
-          <p className="text-gray-400">Loading booking details...</p>
+        <div className="text-center py-4">
+          <p className="text-gray-400 text-sm">Loading booking details...</p>
         </div>
       ) : booking ? (
-        <div className="space-y-6">
+        <div className="space-y-3">
           {/* Status */}
-          <div className="flex items-center justify-between p-4 bg-deep-slate rounded-lg border border-gray-700">
+          <div className="flex items-center justify-between p-3 bg-deep-slate rounded-lg border border-gray-700">
             <div>
-              <p className="text-sm text-gray-400">Status</p>
-              <p className={`text-lg font-semibold ${getStatusColor(booking.status)}`}>
+              <p className="text-xs text-gray-400">Status</p>
+              <p className={`text-sm font-semibold ${getStatusColor(booking.status)}`}>
                 {booking.status}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-400">Booking ID</p>
-              <p className="text-sm text-white font-mono">{booking.id.slice(0, 8)}</p>
+              <p className="text-xs text-gray-400">Booking ID</p>
+              <p className="text-xs text-white font-mono">{booking.id.slice(0, 8)}</p>
             </div>
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 bg-deep-slate rounded-lg border border-gray-700">
-              <p className="text-sm text-gray-400 mb-1">Pickup Date</p>
-              <p className="text-white font-semibold">{formatDate(booking.pickupDate)}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="p-2 bg-deep-slate rounded-lg border border-gray-700">
+              <p className="text-xs text-gray-400 mb-1">Pickup Date</p>
+              <p className="text-sm text-white font-semibold">{formatDate(booking.pickupDate)}</p>
             </div>
-            <div className="p-4 bg-deep-slate rounded-lg border border-gray-700">
-              <p className="text-sm text-gray-400 mb-1">Return Date</p>
-              <p className="text-white font-semibold">{formatDate(booking.returnDate)}</p>
+            <div className="p-2 bg-deep-slate rounded-lg border border-gray-700">
+              <p className="text-xs text-gray-400 mb-1">Return Date</p>
+              <p className="text-sm text-white font-semibold">{formatDate(booking.returnDate)}</p>
             </div>
           </div>
 
           {/* Package or Equipment */}
           {booking.package ? (
-            <div className="p-4 bg-deep-slate rounded-lg border border-gray-700">
-              <p className="text-sm text-gray-400 mb-1">Package</p>
-              <p className="text-white font-semibold">{booking.package.name}</p>
-              <p className="text-sm text-gray-300 mt-1">{booking.package.idealFor}</p>
+            <div className="p-2 bg-deep-slate rounded-lg border border-gray-700">
+              <p className="text-xs text-gray-400 mb-1">Package</p>
+              <p className="text-sm text-white font-semibold">{booking.package.name}</p>
+              <p className="text-xs text-gray-300 mt-1">{booking.package.idealFor}</p>
             </div>
           ) : null}
 
           {/* Equipment & Add-ons */}
           {booking.bookingItems && booking.bookingItems.length > 0 && (
-            <div className="p-4 bg-deep-slate rounded-lg border border-gray-700">
-              <p className="text-sm text-gray-400 mb-2">Items</p>
-              <div className="space-y-2">
+            <div className="p-2 bg-deep-slate rounded-lg border border-gray-700 max-h-32 overflow-y-auto">
+              <p className="text-xs text-gray-400 mb-1">Items</p>
+              <div className="space-y-1">
                 {booking.bookingItems.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center text-sm">
-                    <div>
+                  <div key={item.id} className="flex justify-between items-center text-xs">
+                    <div className="flex-1 min-w-0">
                       {item.equipment ? (
-                        <span className="text-white">
+                        <span className="text-white truncate">
                           {item.equipment.name} <span className="text-gray-400">({item.equipment.category})</span>
                           {item.quantity > 1 && <span className="text-gray-400"> × {item.quantity}</span>}
                         </span>
                       ) : item.addOn ? (
-                        <span className="text-white">
+                        <span className="text-white truncate">
                           {item.addOn.name} <span className="text-gray-400">({item.addOn.category})</span>
                           {item.quantity > 1 && <span className="text-gray-400"> × {item.quantity}</span>}
                         </span>
                       ) : null}
                     </div>
                     {item.addOn && (
-                      <span className="text-neon-blue">{formatCurrency(item.addOn.price)}</span>
+                      <span className="text-neon-blue text-xs ml-2 flex-shrink-0">{formatCurrency(item.addOn.price)}</span>
                     )}
                   </div>
                 ))}
@@ -313,33 +312,33 @@ export function BookingActionModal({
 
           {/* Customer Info */}
           {(booking.customerName || booking.customerEmail || booking.customerPhone) && (
-            <div className="p-4 bg-deep-slate rounded-lg border border-gray-700">
-              <p className="text-sm text-gray-400 mb-2">Customer Information</p>
-              <div className="space-y-1 text-sm">
+            <div className="p-2 bg-deep-slate rounded-lg border border-gray-700">
+              <p className="text-xs text-gray-400 mb-1">Customer Information</p>
+              <div className="space-y-0.5 text-xs">
                 {booking.customerName && (
-                  <p className="text-white"><span className="text-gray-400">Name:</span> {booking.customerName}</p>
+                  <p className="text-white truncate"><span className="text-gray-400">Name:</span> {booking.customerName}</p>
                 )}
                 {booking.customerEmail && (
-                  <p className="text-white"><span className="text-gray-400">Email:</span> {booking.customerEmail}</p>
+                  <p className="text-white truncate"><span className="text-gray-400">Email:</span> {booking.customerEmail}</p>
                 )}
                 {booking.customerPhone && (
-                  <p className="text-white"><span className="text-gray-400">Phone:</span> {booking.customerPhone}</p>
+                  <p className="text-white truncate"><span className="text-gray-400">Phone:</span> {booking.customerPhone}</p>
                 )}
               </div>
             </div>
           )}
 
           {/* Pricing */}
-          <div className="p-4 bg-deep-slate rounded-lg border border-gray-700">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-400">Total Price</span>
-              <span className="text-white font-semibold text-lg">{formatCurrency(booking.totalPrice)}</span>
+          <div className="p-2 bg-deep-slate rounded-lg border border-gray-700">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-xs text-gray-400">Total Price</span>
+              <span className="text-sm text-white font-semibold">{formatCurrency(booking.totalPrice)}</span>
             </div>
-            <div className="flex justify-between items-center text-sm">
+            <div className="flex justify-between items-center text-xs">
               <span className="text-gray-400">Deposit (50%)</span>
               <span className="text-gray-300">{formatCurrency(booking.deposit)}</span>
             </div>
-            <div className="flex justify-between items-center text-sm mt-1">
+            <div className="flex justify-between items-center text-xs mt-1">
               <span className="text-gray-400">Delivery</span>
               <span className="text-gray-300">{booking.deliveryOption}</span>
             </div>
@@ -347,22 +346,22 @@ export function BookingActionModal({
 
           {/* Delete Reason Input */}
           {showDeleteReason && (
-            <div className="p-4 bg-red-500/10 rounded-lg border border-red-500/30">
-              <label className="block text-sm font-medium text-white mb-2">
+            <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/30">
+              <label className="block text-xs font-medium text-white mb-1">
                 Reason for Deletion (Optional)
               </label>
               <textarea
                 value={deleteReason}
                 onChange={(e) => setDeleteReason(e.target.value)}
                 placeholder="Enter reason for deletion..."
-                className="w-full px-3 py-2 bg-deep-slate border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
-                rows={3}
+                className="w-full px-2 py-1 text-sm bg-deep-slate border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                rows={2}
               />
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t border-gray-700">
+          <div className="flex gap-2 pt-2 border-t border-gray-700">
             {booking.status === 'Pending' && (
               <Button
                 variant="primary"
