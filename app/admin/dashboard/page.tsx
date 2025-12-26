@@ -85,49 +85,20 @@ export default async function AdminDashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Quick Actions</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <Link href="/admin/inventory">
-                <Button variant="primary" className="w-full justify-start">
-                  Manage Inventory
-                </Button>
-              </Link>
-              <Link href="/admin/rentals">
-                <Button variant="outline" className="w-full justify-start">
-                  View All Rentals
-                </Button>
-              </Link>
-              <Link href="/admin/calendar">
-                <Button variant="outline" className="w-full justify-start">
-                  View Calendar
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Pending Bookings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8">
-              <p className="text-4xl font-bold text-neon-blue mb-2">{stats.pendingBookings}</p>
-              <p className="text-gray-400 mb-4">Bookings awaiting confirmation</p>
-              <Link href="/admin/rentals?status=Pending">
-                <Button variant="primary">Review Bookings</Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Pending Bookings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <p className="text-4xl font-bold text-neon-blue mb-2">{stats.pendingBookings}</p>
+            <p className="text-gray-400 mb-4">Bookings awaiting confirmation</p>
+            <Link href="/admin/rentals?status=Pending">
+              <Button variant="primary">Review Bookings</Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

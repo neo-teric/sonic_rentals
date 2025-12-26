@@ -10,6 +10,7 @@ export function AdminNavbar() {
 
   const navItems = [
     { href: '/admin/dashboard', label: 'Dashboard' },
+    { href: '/admin/quick-actions', label: 'Quick Actions' },
     { href: '/admin/inventory', label: 'Inventory' },
     { href: '/admin/rentals', label: 'Rentals' },
     { href: '/admin/past-bookings', label: 'Past Bookings' },
