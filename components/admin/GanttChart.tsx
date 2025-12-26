@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { formatCurrency } from '@/lib/utils'
+import { BookingActionModal } from './BookingActionModal'
 
 interface Booking {
   id: string
@@ -43,6 +44,8 @@ export function GanttChart() {
   })
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<'equipment' | 'timeline'>('timeline')
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const fetchBookings = async () => {
     try {
@@ -82,8 +85,43 @@ export function GanttChart() {
   useEffect(() => {
     fetchBookings()
     const interval = setInterval(fetchBookings, 10000) // Refresh every 10 seconds
-    return () => clearInterval(interval)
+    
+    // Listen for booking updates
+    const handleBookingUpdate = () => {
+      fetchBookings()
+    }
+    window.addEventListener('bookingConfirmed', handleBookingUpdate)
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'bookingUpdate') {
+        fetchBookings()
+      }
+    })
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('bookingConfirmed', handleBookingUpdate)
+    }
   }, [])
+
+  const handleBookingClick = (bookingId: string) => {
+    console.log('GanttChart: Clicked booking:', bookingId)
+    if (!bookingId) {
+      console.error('GanttChart: No booking ID provided')
+      return
+    }
+    setSelectedBookingId(bookingId)
+    setIsModalOpen(true)
+    console.log('GanttChart: Modal should open, bookingId:', bookingId, 'isModalOpen:', true)
+  }
+
+  const handleModalClose = () => {
+    setIsModalOpen(false)
+    setSelectedBookingId(null)
+  }
+
+  const handleActionComplete = () => {
+    fetchBookings() // Refresh the chart
+  }
 
   // Build equipment timeline from bookings
   const equipmentTimeline = useMemo(() => {
@@ -477,7 +515,7 @@ export function GanttChart() {
                     {selectedEquipment.length > 0
                       ? 'No bookings found for selected equipment'
                       : bookings.length === 0
-                      ? 'No bookings found. Make sure bookings have status Confirmed, Active, or Completed and include equipment items.'
+                      ? 'No bookings found. Make sure bookings have equipment items.'
                       : 'No equipment bookings found. Bookings may not have equipment items, or they may be outside the selected date range.'}
                     {bookings.length > 0 && (
                       <div className="mt-2 text-xs">
@@ -496,7 +534,7 @@ export function GanttChart() {
                           {item.bookings.length} booking{item.bookings.length !== 1 ? 's' : ''}
                         </div>
                       </div>
-                      <div className="flex-1 relative min-h-[60px]">
+                      <div className="flex-1 relative min-h-[60px]" style={{ pointerEvents: 'none' }}>
                         {item.bookings
                           .filter((booking) => {
                             // Filter bookings that overlap with the visible date range
@@ -513,14 +551,24 @@ export function GanttChart() {
                             return (
                               <div
                                 key={booking.bookingId}
-                                className={`absolute top-1 bottom-1 ${getStatusColor(booking.status)} rounded px-2 py-1 text-white text-xs cursor-pointer hover:opacity-80 transition-opacity z-10`}
+                                className={`absolute top-1 bottom-1 ${getStatusColor(booking.status)} rounded px-2 py-1 text-white text-xs cursor-pointer hover:opacity-90 hover:scale-[1.02] hover:shadow-lg transition-all z-20 select-none`}
                                 style={{
                                   left: position.left,
                                   width: position.width,
                                   minWidth: '40px',
                                   maxWidth: '100%',
+                                  pointerEvents: 'auto',
                                 }}
-                                title={`Booking ${booking.bookingId.slice(0, 8)}\nStatus: ${booking.status}\nQty: ${booking.quantity}\n${booking.packageName ? `Package: ${booking.packageName}` : ''}\nDates: ${new Date(booking.startDate).toLocaleDateString()} - ${new Date(booking.endDate).toLocaleDateString()}`}
+                                title={`Booking ${booking.bookingId.slice(0, 8)}\nStatus: ${booking.status}\nQty: ${booking.quantity}\n${booking.packageName ? `Package: ${booking.packageName}` : ''}\nDates: ${new Date(booking.startDate).toLocaleDateString()} - ${new Date(booking.endDate).toLocaleDateString()}\nClick to view details`}
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  console.log('Booking div clicked:', booking.bookingId)
+                                  handleBookingClick(booking.bookingId)
+                                }}
+                                onMouseDown={(e) => {
+                                  e.stopPropagation()
+                                }}
                               >
                                 <div className="truncate font-semibold">
                                   {booking.packageName || `#${booking.bookingId.slice(0, 6)}`}
@@ -561,6 +609,14 @@ export function GanttChart() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Booking Action Modal */}
+      <BookingActionModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        bookingId={selectedBookingId}
+        onActionComplete={handleActionComplete}
+      />
     </div>
   )
 }

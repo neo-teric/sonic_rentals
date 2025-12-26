@@ -11,11 +11,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get all confirmed, active, and completed bookings for calendar display
+    // Get all bookings (including pending) for calendar display
     // This includes both package bookings and standalone equipment bookings
     const bookings = await db.booking.findMany({
       where: {
-        status: { in: ['Confirmed', 'Active', 'Completed'] },
+        status: { in: ['Pending', 'Confirmed', 'Active', 'Completed'] },
       },
       include: {
         package: true, // Include package info for package bookings
@@ -58,9 +58,10 @@ export async function GET() {
     }
 
     // Log for debugging (remove in production if needed)
-    console.log(`Calendar API: Found ${bookings.length} confirmed/active/completed bookings`)
+    console.log(`Calendar API: Found ${bookings.length} bookings (Pending/Confirmed/Active/Completed)`)
     const packageBookings = bookings.filter(b => b.packageId !== null)
-    console.log(`Calendar API: ${packageBookings.length} package bookings, ${bookings.length - packageBookings.length} equipment-only bookings`)
+    const pendingBookings = bookings.filter(b => b.status === 'Pending')
+    console.log(`Calendar API: ${packageBookings.length} package bookings, ${bookings.length - packageBookings.length} equipment-only bookings, ${pendingBookings.length} pending bookings`)
 
     return NextResponse.json(bookings)
   } catch (error) {

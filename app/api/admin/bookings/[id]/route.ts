@@ -4,6 +4,120 @@ import { auth } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth()
+    if (!session || session.user?.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id } = await params
+    console.log('GET /api/admin/bookings/[id]: Fetching booking:', id)
+    
+    const booking = await db.booking.findUnique({
+      where: { id },
+      include: {
+        package: true,
+        bookingItems: {
+          include: {
+            equipment: true,
+            addOn: true,
+          },
+        },
+      },
+    })
+    
+    // Fetch user separately if needed
+    let userInfo: { name: string | null; email: string | null; phone: string | null } | null = null
+    if (booking?.userId) {
+      try {
+        const user = await db.user.findUnique({
+          where: { id: booking.userId },
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+          },
+        })
+        userInfo = user ? { name: user.name, email: user.email, phone: user.phone } : null
+      } catch (userError) {
+        console.error('Error fetching user info:', userError)
+        userInfo = null
+      }
+    }
+
+    if (!booking) {
+      console.log('GET /api/admin/bookings/[id]: Booking not found:', id)
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
+    }
+    
+    console.log('GET /api/admin/bookings/[id]: Found booking:', booking.id, booking.status)
+
+    // Format response with user info - ensure dates are serialized properly
+    try {
+      const response = {
+        id: booking.id,
+        status: booking.status,
+        pickupDate: booking.pickupDate ? (booking.pickupDate instanceof Date ? booking.pickupDate.toISOString() : new Date(booking.pickupDate).toISOString()) : null,
+        returnDate: booking.returnDate ? (booking.returnDate instanceof Date ? booking.returnDate.toISOString() : new Date(booking.returnDate).toISOString()) : null,
+        totalPrice: booking.totalPrice ?? 0,
+        deposit: booking.deposit ?? 0,
+        deliveryOption: booking.deliveryOption || 'WarehousePickup',
+        customerName: userInfo?.name || null,
+        customerEmail: userInfo?.email || null,
+        customerPhone: userInfo?.phone || null,
+        package: booking.package ? {
+          name: booking.package.name || '',
+          idealFor: booking.package.idealFor || '',
+        } : null,
+        bookingItems: (booking.bookingItems || []).map((item: any) => ({
+          id: item.id,
+          quantity: item.quantity || 1,
+          equipment: item.equipment ? {
+            id: item.equipment.id,
+            name: item.equipment.name || '',
+            category: item.equipment.category || '',
+          } : null,
+          addOn: item.addOn ? {
+            id: item.addOn.id,
+            name: item.addOn.name || '',
+            category: item.addOn.category || '',
+            price: item.addOn.price || 0,
+          } : null,
+        })),
+      }
+
+      console.log('GET /api/admin/bookings/[id]: Successfully formatted response')
+      return NextResponse.json(response)
+    } catch (formatError) {
+      console.error('Error formatting booking response:', formatError)
+      throw formatError
+    }
+  } catch (error) {
+    console.error('Error fetching booking:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : undefined
+    let bookingId = 'unknown'
+    try {
+      const { id } = await params
+      bookingId = id
+    } catch {
+      // Couldn't get params, use unknown
+    }
+    console.error('Error details:', { errorMessage, errorStack, bookingId })
+    return NextResponse.json(
+      { 
+        error: 'Failed to fetch booking',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
