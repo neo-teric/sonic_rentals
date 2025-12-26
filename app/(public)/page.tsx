@@ -1,5 +1,9 @@
 import { db } from '@/lib/db'
-import { HomeTabs } from '@/components/home/HomeTabs'
+import { HeroSection } from '@/components/home/HeroSection'
+import { CategoryCards } from '@/components/home/CategoryCards'
+import { PopularPackages } from '@/components/home/PopularPackages'
+import { HowItWorks } from '@/components/home/HowItWorks'
+import { TrustedBy } from '@/components/home/TrustedBy'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,15 +18,25 @@ export default async function HomePage() {
   const packages = await getPackages()
 
   return (
-    <main className="min-h-screen bg-charcoal flex flex-col">
-      {/* Main Content - Tabs */}
-      <section className="flex-1 py-12 px-8">
-        <div className="max-w-6xl mx-auto h-full">
-          <div className="bg-deep-slate border border-gray-700 rounded-lg p-6 shadow-lg h-full flex flex-col">
-            <HomeTabs packages={packages} />
-          </div>
-        </div>
-      </section>
+    <main className="min-h-screen bg-charcoal relative">
+      {/* Hero Section */}
+      <div className="relative z-20">
+        <HeroSection />
+      </div>
+
+      {/* Category Cards */}
+      <div className="relative z-10">
+        <CategoryCards />
+      </div>
+
+      {/* Popular Packages */}
+      <PopularPackages packages={packages} />
+
+      {/* How It Works */}
+      <HowItWorks />
+
+      {/* Trusted By */}
+      <TrustedBy />
     </main>
   )
 }

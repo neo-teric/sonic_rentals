@@ -34,17 +34,21 @@ export function Logo({ asLink = true, className }: LogoProps) {
     }
   }
 
+  // Cache-busting version - increment this when logo is updated
+  const LOGO_VERSION = '2'
+  
   const logoContent = (
     <>
       {!imageError ? (
         <Image
-          src={logoPaths[currentLogoIndex]}
+          src={`${logoPaths[currentLogoIndex]}?v=${LOGO_VERSION}`}
           alt="Sonic Rentals Logo"
-          width={60}
-          height={60}
-          className="h-12 w-12 md:h-14 md:w-14 object-contain group-hover:scale-105 transition-all"
+          width={200}
+          height={100}
+          className="h-16 w-32 md:h-20 md:w-40 object-contain group-hover:scale-105 transition-all"
           priority
           onError={handleImageError}
+          unoptimized
         />
       ) : (
         <span className="text-2xl font-bold bg-gradient-to-r from-neon-blue to-cyber-green bg-clip-text text-transparent">

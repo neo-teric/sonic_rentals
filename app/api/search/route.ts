@@ -28,7 +28,14 @@ export async function GET(request: Request) {
         idealFor.includes(searchTerm) ||
         crowdSize.includes(searchTerm)
       )
-    })
+    }).map((pkg) => ({
+      id: pkg.id,
+      name: pkg.name,
+      idealFor: pkg.idealFor,
+      crowdSize: pkg.crowdSize,
+      setupTime: String(pkg.setupTime),
+      basePrice: pkg.basePrice,
+    }))
 
     // Search equipment - SQLite doesn't support case-insensitive mode, so we filter in memory
     const allEquipment = await db.equipment.findMany({

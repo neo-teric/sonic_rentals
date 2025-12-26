@@ -104,7 +104,7 @@ export function SearchBar() {
           type="text"
           value={query}
           onChange={handleInputChange}
-          placeholder="Search packages and equipment..."
+          placeholder="Search packages, gear, or brands..."
           className="w-full px-6 py-4 pr-14 bg-deep-slate border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-neon-blue focus:border-transparent transition-all"
         />
         <div className="absolute right-4 top-1/2 -translate-y-1/2">

@@ -11,7 +11,7 @@ export function Card({ children, className, hover = false }: CardProps) {
   return (
     <div
       className={cn(
-        'bg-deep-slate rounded-lg border border-gray-700 p-6',
+        'bg-deep-slate rounded-lg border border-gray-700 p-3',
         hover && 'transition-all duration-200 hover:border-neon-blue hover:shadow-lg hover:shadow-neon-blue/20',
         className
       )}
@@ -23,7 +23,7 @@ export function Card({ children, className, hover = false }: CardProps) {
 
 export function CardHeader({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('mb-4', className)}>
+    <div className={cn('mb-2', className)}>
       {children}
     </div>
   )

@@ -8,10 +8,7 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-8 py-4">
         <div className="flex items-center justify-between gap-6">
           <Logo />
-          <p className="hidden md:block text-xl md:text-2xl lg:text-3xl font-semibold text-white max-w-md flex-shrink-0 lowercase text-center self-center" style={{ fontFamily: 'var(--font-handwriting), cursive' }}>
-            Professional audio equipment rental for your needs
-          </p>
-          <div className="flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-6 flex-1 justify-center">
             <Link href="/packages" className="text-gray-300 hover:text-neon-blue transition-colors font-medium">
               Packages
             </Link>
@@ -25,8 +22,8 @@ export function Navbar() {
               Admin
             </Link>
             <Link href="/booking">
-              <Button variant="primary" size="sm" className="shadow-lg shadow-neon-blue/20 hover:shadow-neon-blue/40">
-                Book Now
+              <Button variant="primary" size="sm" className="bg-orange-500 hover:bg-orange-600 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50">
+                Check Availability
               </Button>
             </Link>
           </div>
